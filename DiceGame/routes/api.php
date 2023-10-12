@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Route;
 // TODO group routes with players/ as a prefix
 
 // Create a new user
-Route::post('players', [UserController::class, 'store'])->name('players.register');
+Route::post('players', [UserController::class, 'register'])->name('players.register');
 
 // Get a specific user
 Route::get('players/{id}', [UserController::class, 'show'])->name('player.show');// TODO: Is it ok this "playerS"?

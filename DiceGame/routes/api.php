@@ -14,21 +14,30 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-// TODO group routes with players/ as a prefix
+// TODO group routes with players/ as a prefix or as it´s be needed
 
-// Create a new user
+//--------------Routes without authentication
+
+// Create-register a new user
+// TODO inproove consistency in routes, choose "user" or "player"
 Route::post('players', [UserController::class, 'register'])->name('players.register');
 
-// Get a specific user
-Route::get('players/{id}', [UserController::class, 'show'])->name('player.show');// TODO: Is it ok this "playerS"?
+// Log in an existing user
+Route::post('login', [UserController::class, 'login'])->name('user.login');
 
-// Update an User
-Route::put('players/{id}', [UserController::class, 'update'])->name('player.update');
+//---------------Routes with authentication
 
-// Delete an User
-Route::delete('players/{id}', [UserController::class, 'destroy'])->name('player.destroy');
+Route::middleware('auth:api')->group(function () {
 
-/* Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+    // Log out a logged in user
+    Route::post('logout', [UserController::class, 'logout'])->name('user.logout');
+
+    // Get a specific user
+    Route::get('players/{id}', [UserController::class, 'show'])->name('player.show');
+
+    // Update an User
+    Route::put('players/{id}', [UserController::class, 'update'])->name('player.update');
+
+    // Delete an User
+    Route::delete('players/{id}', [UserController::class, 'destroy'])->name('player.destroy');
 });
- */

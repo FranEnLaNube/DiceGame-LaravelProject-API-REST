@@ -2,14 +2,14 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 
 class UserControllerRegisterTest extends TestCase
 {
-    use RefreshDatabase;
-
+    use DatabaseTransactions;
     public function test_user_can_register_with_valid_data()
     {
         $response = $this->post(route('players.register'), [ // It's the same to use $this->post('api/players'...
@@ -20,7 +20,8 @@ class UserControllerRegisterTest extends TestCase
         ]);
 
         $response->assertStatus(201); // Check if gets a HTTP 201 response (registered).
-        //TODO check need of this line: $this->assertDatabaseHas('users', ['email' => 'testuser@example.com']); // Checks if users is at database.
+        //TODO check need of this line:
+        $this->assertDatabaseHas('users', ['email' => 'testuser@example.com']); // Checks if users is at database.
     }
 
     public function test_user_cannot_register_with_invalid_data()
@@ -33,6 +34,7 @@ class UserControllerRegisterTest extends TestCase
         ]);
 
         $response->assertStatus(422); // Check if gets a HTTP 422 response (Invalid request).
-        // TODO check need of this line: $this->assertDatabaseMissing('users', ['email' => 'invalid-email']); // Checks if users is not created in database.
+        // TODO check need of this line:
+        $this->assertDatabaseMissing('users', ['email' => 'invalid-email']); // Checks if users is not created in database.
     }
 }

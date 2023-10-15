@@ -12,7 +12,7 @@ class UserControllerRegisterTest extends TestCase
     use DatabaseTransactions;
     public function test_user_can_register_with_valid_data()
     {
-        $response = $this->post(route('players.register'), [ // It's the same to use $this->post('api/players'...
+        $response = $this->post(route('user.register'), [ // It's the same to use $this->post('api/players'...
             'nickname' => 'testUser',
             'email' => 'testuser@example.com',
             'password' => 'secret_password',
@@ -26,7 +26,7 @@ class UserControllerRegisterTest extends TestCase
 
     public function test_user_cannot_register_with_invalid_data()
     {
-        $response = $this->post('api/players', [
+        $response = $this->post(route('user.register'), [
             'nickname' => 'testUser',
             'email' => 'invalid-email', // Invalid email
             'password' => 'short', // Too short password

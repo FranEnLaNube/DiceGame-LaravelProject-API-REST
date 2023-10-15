@@ -41,7 +41,7 @@ class UserController extends Controller
      *     "message": "User has not been created",
      * }
      */
-    public function register(Request $request)
+    public function store(Request $request)
     {
         $validationRules = [
             'nickname' => 'nullable|min:4|max:255|unique:users',
@@ -254,7 +254,7 @@ class UserController extends Controller
      * @urlParam id required The ID of the user.
      *
      * @response 200 {
-     *     "message": "User successfully updated",
+     *     "message": "User successfully deleted",
      *     }
      * }
      * @response 404 {

@@ -6,7 +6,6 @@ use App\Models\Game;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
-use Illuminate\Http\Request;
 
 class GameController extends Controller
 {
@@ -149,8 +148,9 @@ class GameController extends Controller
                     200
                 );
             }
+            $succesRate = $user->calculatePlayerSuccessRate();
             return response()->json(
-                ['message' => 'Games found', 'data' => $games],
+                ['message' => 'Games found', 'Games' => $games, 'User success rate' => $succesRate. '%'],
                 200
             );
         }
@@ -159,11 +159,6 @@ class GameController extends Controller
             401
         );
     }
-    /*     // A specific user delete their games
-
-    // DELETE /players/{id}/games: elimina les tirades del jugador/a.
-    Route::delete('players/{id}/games', [GameController::class, 'destroyPlayerGames'])->name('game.playerDeletes');
- */
     /**
      * REMOVE GAMES FROM A SPECIFIC PLAYER.
      *

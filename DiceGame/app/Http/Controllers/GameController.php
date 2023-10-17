@@ -39,7 +39,7 @@ class GameController extends Controller
         foreach ($users as $user) {
             $userNickname = $user->nickname ?? 'Anonymous';
             $successRate = $user->calculatePlayerSuccessRate();
-            $successRate = $user->games->count() ?  $successRate. '%' : "No games for this player";
+            $successRate = $user->games->count() ?  $successRate . '%' : "No games for this player";
             $data[] = [
                 'nickname' => $userNickname,
                 'successRate' => $successRate,
@@ -209,17 +209,22 @@ class GameController extends Controller
             401
         );
     }
+
+
+
+
+
     /**
-     * GET ALL PLAYERS WITH THEIR SUCCESS PERCENTAGES
+     * GET PLAYERS RANKING ORDERED BY SUCCESS RATE PERCENTAGES
      *
      * @group Admin
      *
      * @response 422 {
      *     "message": "No players have been played yet"
      * @response 200 {
-     *     "message": "Players and success rates found",
+     *     "message": "Player and success rates found",
      *      [
-     *     "data": [
+     *     "User data": [
      *         {
      *             "nickname": "nickname1",
      *             "successRate": "16.66%"
@@ -232,6 +237,7 @@ class GameController extends Controller
      *     "Average success rate": "14.81%"
      * }
      */
+
     public function ranking()
     {
         // TODO Add permissions
@@ -244,7 +250,7 @@ class GameController extends Controller
             if ($user->games->count()) {
                 $playersPlayedData[] = [
                     'nickname' => $userNickname,
-                    'successRate' => $user->calculatePlayerSuccessRate(). '%',
+                    'successRate' => $user->calculatePlayerSuccessRate() . '%',
                     'gamesPlayed' => $user->games->count(),
                 ];
             } else {
@@ -280,6 +286,64 @@ class GameController extends Controller
             ],
             200
         );
+    }
+    /**
+     * GET THE PLAYER WITH WORST SUCCESS PERCENTAGES
+     *
+     * @group Admin
+     *
+     * @response 422 {
+     *     "message": "No players have played yet"
+     * @response 200 {
+     *     "message": "'The worst player is loserNickname with a success rate of 10%",
+     * }
+     */
+    public function showLoser()
+    {
+        $loser = $this->getLoser();
+        $gotUser = is_object($loser);
+        if ($gotUser) {
+            $loserNickname = $loser->nickname ?? 'Anonymous';
+            $successRate = $loser->calculatePlayerSuccessRate() . '%';
+            return response()->json(
+                [
+                    'message' => 'The worst player is ' . $loserNickname . ' with a success rate of ' . $successRate
+                ],
+                200
+            );
+        }
+        //GET a 422 response from getloser().
+        // TODO test this output
+        return $loser;
+    }
+    /**
+     * GET THE PLAYER WITH BEST SUCCESS PERCENTAGES
+     *
+     * @group Admin
+     *
+     * @response 422 {
+     *     "message": "No players have played yet"
+     * @response 200 {
+     *     "message": "'The best player is winnerNickname with a success rate of 10%",
+     * }
+     */
+    public function showWinner()
+    {
+        $winner = $this->getWinner();
+        $gotUser = is_object($winner);
+        if ($gotUser) {
+            $winnerNickname = $winner->nickname ?? 'Anonymous';
+            $successRate = $winner->calculatePlayerSuccessRate() . '%';
+            return response()->json(
+                [
+                    'message' => 'The best player is ' . $winnerNickname . ' with a success rate of ' . $successRate
+                ],
+                200
+            );
+        }
+        //GET a 422 response from getWinner().
+        // TODO test this output
+        return $winner;
     }
     /**
      * REMOVE GAMES FROM A SPECIFIC PLAYER.
@@ -354,5 +418,63 @@ class GameController extends Controller
         $successRate = number_format($successRate, 2);
 
         return $successRate;
+    }
+    /**
+     * Gets the user (who has played) with the worst success rate
+     * @return object User
+     */
+    public function getLoser(): object
+    {
+        // TODO Add permissions
+        $users = User::all();
+        $loser = $users->first();
+        $gamesPlayed = false;
+        // if !$users, foreach does not execute and returns "No players have played yet"
+        foreach ($users as $user) {
+            if ($user->games->count() === 0) {
+                continue;
+            } else {
+                $gamesPlayed = true;
+            }
+            if ($user->calculatePlayerSuccessRate() < $loser->calculatePlayerSuccessRate()) {
+                $loser = $user;
+            }
+        }
+        if (!$gamesPlayed) {
+            return response()->json(
+                ['message' => 'No players have played yet'],
+                422
+            );
+        }
+        return $loser;
+    }
+    /**
+     * Gets the user (who has played) with the best success rate
+     * @return object User
+     */
+    public function getWinner()
+    {
+        // TODO Add permissions
+        $users = User::all();
+        $loser = $users->first();
+        $gamesPlayed = false;
+        // if !$users, foreach does not execute and returns "No players have played yet"
+        foreach ($users as $user) {
+            if ($user->games->count() === 0) {
+                continue;
+            } else {
+                $gamesPlayed = true;
+            }
+            if ($user->calculatePlayerSuccessRate() > $loser->calculatePlayerSuccessRate()) {
+                $loser = $user;
+            }
+        }
+        if (!$gamesPlayed) {
+            return response()->json(
+                ['message' => 'No players have played yet'],
+                422
+            );
+        }
+        return $loser;
     }
 }

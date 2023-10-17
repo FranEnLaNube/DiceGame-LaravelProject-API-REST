@@ -28,11 +28,12 @@ class UserController extends Controller
      *
      * @response 201 {
      *     "message": "User created successfully",
-     *     "data": {
+     *     "User data": {
      *         "id": 1,
      *         "nickname": "userNickname",
      *         "email": "user@mail.com"
-     *     }
+     *     },
+     *     "token": "User Token"
      * }
      * @response 422 {
      *     "message": "Different Laravel validation messages from lang/en/validation.php",
@@ -68,10 +69,13 @@ class UserController extends Controller
         if ($user = User::create($requestData)) // TODO asign role
         {
             // If creations works
-            // Asign "Anonymous" if nickname is null
+            $Authuser = Auth::user();
+            /** @var \App\Models\User $user **/
+            $token = $user->createToken('User_Token')->accessToken;
+            // Show "Anonymous" if nickname is null
             $user->nickname = $user->nickname ?? 'Anonymous';
             return response()->json(
-                ['message' => 'User created successfully', 'data' => $user],
+                ['message' => 'User created successfully', 'User data' => $user, 'token' => $token,],
                 201
             );
         };
@@ -93,6 +97,11 @@ class UserController extends Controller
      * @response 200 {
      *     "message": "User token successfully created'",
      *     "token": "User Token"
+     *      "User data": {
+     *         "id": 1,
+     *         "nickname": "userNickname",
+     *         "email": "user@mail.com"
+     *     }
      * }
      * @response 422 {
      *     "message": "Different Laravel validation messages from lang/en/validation.php",
@@ -136,7 +145,7 @@ class UserController extends Controller
         $token = $user->createToken('User_Token')->accessToken;
 
         return response()->json(
-            ['message' => 'User token successfully created', 'token' => $token],
+            ['message' => 'User token successfully created', 'token' => $token, 'User data' => $user],
             200
         );
     }
@@ -239,11 +248,18 @@ class UserController extends Controller
             );
         }
         // User is found
-        // Asign "Anonymous" if nickname is null
-        $user->nickname = $user->nickname ?? 'Anonymous';
+        $authUser = Auth::user();
+        if ($authUser->id == $id) {
+            // Asign "Anonymous" if nickname is null
+            $user->nickname = $user->nickname ?? 'Anonymous';
+            return response()->json(
+                ['message' => 'User found', 'data' => $user],
+                200
+            );
+        }
         return response()->json(
-            ['message' => 'User found', 'data' => $user],
-            200
+            ['error' => 'Unauthorized'],
+            401
         );
     }
 

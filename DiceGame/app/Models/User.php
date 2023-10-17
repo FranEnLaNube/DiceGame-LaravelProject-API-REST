@@ -47,4 +47,23 @@ class User extends Authenticatable
     {
         return $this->hasMany(Game::class);
     }
+    /**
+     * Calculate success rate of a specific player
+     * @return float
+     */
+    public function calculatePlayerSuccessRate(): float
+    {
+        // Get number of games won by this player
+        $userGamesWon = $this->games->where('gameWon', 'Won')->count();
+        // Get number of games played by this player
+        $userGames = $this->games->count();
+        if ($userGames == 0) {
+            return 0.0;
+        }
+
+        $successRate = ($userGamesWon / $userGames) * 100;
+        $successRate = number_format($successRate, 2);
+
+        return $successRate;
+    }
 }

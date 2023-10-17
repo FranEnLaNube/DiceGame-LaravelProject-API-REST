@@ -45,11 +45,9 @@ class UserControllerLoginTest extends TestCase
         // Make a POST request to login route
         $response = $this->post(route('user.login'), $loginUserData);
 
-        //Assert that the response has an unauthorized (401) HTTP status code:
-        $response->assertUnauthorized();
-
-        // Check if gets a correct Json response
-        $response->assertJson(['message' => 'Unauthorized']);
+        // Check if gets a correct Json response for incorrect password
+        // (403) HTTP status code
+        $response->assertJson(['message' => 'Email or password is incorrect, please try again.']);
 
         // Assert that a user is not authenticated:
         $this->assertGuest();
@@ -57,7 +55,7 @@ class UserControllerLoginTest extends TestCase
     public function test_user_cannot_login_with_incorrect_email()
     {
         // New user with password 'PASSWORD'
-        $user = User::factory()->create(['password' => 'PASSWORD']);
+        User::factory()->create(['password' => 'PASSWORD']);
 
         $loginUserData = [
             'email' => 'other_email@mail.com',
@@ -66,11 +64,9 @@ class UserControllerLoginTest extends TestCase
         // Make a POST request to login route
         $response = $this->post(route('user.login'), $loginUserData);
 
-        //Assert that the response has an unauthorized (401) HTTP status code:
-        $response->assertUnauthorized();
-
-        // Check if gets a correct Json response
-        $response->assertJson(['message' => 'Unauthorized']);
+        // Check if gets a correct Json response for incorrect (inexistent) email address
+        // (403) HTTP status code
+        $response->assertJson(['message' => 'Email or password is incorrect, please try again.']);
 
         // Assert that a user is not authenticated:
         $this->assertGuest();

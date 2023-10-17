@@ -8,13 +8,6 @@ use Illuminate\Support\Facades\Auth;
 
 class GameController extends Controller
 {
-    /*
-- LISTO GET /players: retorna el llistat de tots els jugadors/es del sistema amb el seu percentatge mitjà d’èxits
-- LISTO GET /players/ranking: retorna el rànquing mitjà de tots els jugadors/es del sistema. És a dir, el percentatge mitjà d’èxits.
-- GET /players/ranking/loser: retorna el jugador/a amb pitjor percentatge d’èxit.
-- GET /players/ranking/winner: retorna el jugador/a amb millor percentatge d’èxit.
-*/
-
     /**
      * GET ALL PLAYERS WITH THEIR SUCCESS PERCENTAGES
      *
@@ -61,78 +54,6 @@ class GameController extends Controller
         }
         return response()->json(
             ['message' => 'Players and success rates found', 'data' => $data],
-            200
-        );
-    }
-    /**
-     * GET ALL PLAYERS WITH THEIR SUCCESS PERCENTAGES
-     *
-     * @group Admin
-     *
-     * @response 422 {
-     *     "message": "No players have been played yet"
-     * @response 200 {
-     *     "message": "Players and success rates found",
-     *      [
-     *     "data": [
-     *         {
-     *             "nickname": "nickname1",
-     *             "successRate": "16.66%"
-     *         },
-     *         {
-     *             "nickname": "nickname2",
-     *             "successRate": "14.66%"
-     *         },
-     *     ],
-     *     "Average success rate": "14.81%"
-     * }
-     */
-    public function ranking()
-    {
-        // TODO Add permissions
-        $users = User::all();
-        $playersPlayedData = [];
-        $playersNotPlayedData = [];
-        // if !$users, foreach does not execute and returns "No players have played yet"
-        foreach ($users as $user) {
-            $userNickname = $user->nickname ?? 'Anonymous';
-            if ($user->games->count()) {
-                $playersPlayedData[] = [
-                    'nickname' => $userNickname,
-                    'successRate' => $user->calculatePlayerSuccessRate(). '%',
-                    'gamesPlayed' => $user->games->count(),
-                ];
-            } else {
-                $playersNotPlayedData[] = [
-                    'nickname' => $userNickname,
-                    'successRate' => "The player have not played yet",
-                    'gamesPlayed' => $user->games->count(),
-                ];
-            }
-        }
-        // Order players by success rate and if there is a tie, by games played
-        array_multisort(
-            array_column($playersPlayedData, 'successRate'),
-            SORT_DESC,
-            array_column($playersPlayedData, 'gamesPlayed'),
-            SORT_ASC,
-            $playersPlayedData
-        );
-
-        $playersData[] = array_merge($playersPlayedData, $playersNotPlayedData);
-
-        // Any games where found
-        if (empty($playersPlayedData)) {
-            return response()->json(
-                ['message' => 'No players have played yet'],
-                422
-            );
-        }
-        $generalSuccessRate = $this->calculateGeneralSuccessRate() . '%';
-        return response()->json(
-            [
-                'message' => 'Players and success rates found', 'Players data' => $playersData, 'Average success rate' => $generalSuccessRate
-            ],
             200
         );
     }
@@ -286,6 +207,78 @@ class GameController extends Controller
         return response()->json(
             ['error' => 'Unauthorized'],
             401
+        );
+    }
+    /**
+     * GET ALL PLAYERS WITH THEIR SUCCESS PERCENTAGES
+     *
+     * @group Admin
+     *
+     * @response 422 {
+     *     "message": "No players have been played yet"
+     * @response 200 {
+     *     "message": "Players and success rates found",
+     *      [
+     *     "data": [
+     *         {
+     *             "nickname": "nickname1",
+     *             "successRate": "16.66%"
+     *         },
+     *         {
+     *             "nickname": "nickname2",
+     *             "successRate": "14.66%"
+     *         },
+     *     ],
+     *     "Average success rate": "14.81%"
+     * }
+     */
+    public function ranking()
+    {
+        // TODO Add permissions
+        $users = User::all();
+        $playersPlayedData = [];
+        $playersNotPlayedData = [];
+        // if !$users, foreach does not execute and returns "No players have played yet"
+        foreach ($users as $user) {
+            $userNickname = $user->nickname ?? 'Anonymous';
+            if ($user->games->count()) {
+                $playersPlayedData[] = [
+                    'nickname' => $userNickname,
+                    'successRate' => $user->calculatePlayerSuccessRate(). '%',
+                    'gamesPlayed' => $user->games->count(),
+                ];
+            } else {
+                $playersNotPlayedData[] = [
+                    'nickname' => $userNickname,
+                    'successRate' => "The player have not played yet",
+                    'gamesPlayed' => $user->games->count(),
+                ];
+            }
+        }
+        // Order players by success rate and if there is a tie, by games played
+        array_multisort(
+            array_column($playersPlayedData, 'successRate'),
+            SORT_DESC,
+            array_column($playersPlayedData, 'gamesPlayed'),
+            SORT_ASC,
+            $playersPlayedData
+        );
+
+        $playersData[] = array_merge($playersPlayedData, $playersNotPlayedData);
+
+        // Any games where found
+        if (empty($playersPlayedData)) {
+            return response()->json(
+                ['message' => 'No players have played yet'],
+                422
+            );
+        }
+        $generalSuccessRate = $this->calculateGeneralSuccessRate() . '%';
+        return response()->json(
+            [
+                'message' => 'Players and success rates found', 'Players data' => $playersData, 'Average success rate' => $generalSuccessRate
+            ],
+            200
         );
     }
     /**

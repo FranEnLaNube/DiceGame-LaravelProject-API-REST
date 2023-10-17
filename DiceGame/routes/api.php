@@ -37,13 +37,13 @@ Route::middleware('auth:api')->group(function () {
     Route::post('logout', [UserController::class, 'logout'])->name('user.logout'); // TODO inproove consistency in routes, choose "user" or "player"
 
     // Get a specific user
-    Route::get('players/{id}', [UserController::class, 'show'])->name('player.show'); // TODO inproove consistency in routes, choose "user" or "player"
+    Route::get('players/{id}', [UserController::class, 'show'])->where('id', '[0-9]+')->name('player.show'); // TODO inproove consistency in routes, choose "user" or "player"
 
     // Update an User
-    Route::put('players/{id}', [UserController::class, 'update'])->name('player.update'); // TODO inproove consistency in routes, choose "user" or "player"
+    Route::put('players/{id}', [UserController::class, 'update'])->where('id', '[0-9]+')->name('player.update'); // TODO inproove consistency in routes, choose "user" or "player"
 
     // Delete an User
-    Route::delete('players/{id}', [UserController::class, 'destroy'])->name('player.destroy'); // TODO This one could be deleted because player is not authorized to delete himself and is not asked at the project // TODO inproove consistency in routes, choose "user" or "player"
+    Route::delete('players/{id}', [UserController::class, 'destroy'])->where('id', '[0-9]+')->name('player.destroy'); // TODO This one could be deleted because player is not authorized to delete himself and is not asked at the project // TODO inproove consistency in routes, choose "user" or "player"
 
     //----------- USER-PLAYER-ADMIN routes - with authentication
 
@@ -71,22 +71,22 @@ Route::middleware('auth:api')->group(function () {
     // Get a ranking with success percentages of all players
 
     // GET /players/ranking: retorna el rànquing mitjà de tots els jugadors/es del sistema. És a dir, el percentatge mitjà d’èxits.
-    Route::get('players/ranking', [UserController::class, 'showRanking'])->name('admin.showRanking'); //TODO make this method
+    Route::get('players/ranking', [GameController::class, 'ranking'])->name('admin.showRanking');
 
     // Get the player withn the worst success percentage
 
     // GET /players/ranking/loser: retorna el jugador/a amb pitjor percentatge d’èxit.
-    Route::get('players/ranking/loser', [UserController::class, 'showRankingLoser'])->name('admin.showLoser'); //TODO make this method
+    Route::get('players/ranking/loser', [GameController::class, 'showLoser'])->name('admin.showLoser');
 
     // Get the player with the best success percentage
 
     // GET /players/ranking/winner: retorna el jugador/a amb millor percentatge d’èxit.
-    Route::get('players/ranking/winner', [UserController::class, 'showRankingWinner'])->name('admin.showWinner'); //TODO make this method
+    Route::get('players/ranking/winner', [GameController::class, 'showWinner'])->name('admin.showWinner');
 
     // Gets all players in the database with their success percentages
 
     // GET /players: retorna el llistat de tots els jugadors/es del sistema amb el seu percentatge mitjà d’èxits
-    Route::get('players', [UserController::class, 'indexPlayers'])->name('admin.indexPlayers'); //TODO make method to get all players at UserController
+    Route::get('players', [GameController::class, 'index'])->name('admin.indexPlayers');
 });
 
 // If token is not authorized, invalid, expired or incorrect

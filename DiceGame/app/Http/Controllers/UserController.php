@@ -38,7 +38,7 @@ class UserController extends Controller
      * @response 422 {
      *     "message": "Different Laravel validation messages from lang/en/validation.php",
      * }
-     * @response 400 {
+     * @response 500 {
      *     "message": "User has not been created",
      * }
      */
@@ -69,7 +69,6 @@ class UserController extends Controller
         if ($user = User::create($requestData)) // TODO asign role
         {
             // If creations works
-            $Authuser = Auth::user();
             /** @var \App\Models\User $user **/
             $token = $user->createToken('User_Token')->accessToken;
             // Show "Anonymous" if nickname is null
@@ -79,11 +78,10 @@ class UserController extends Controller
                 201
             );
         };
-
-        // If creations fails
+        // If creations fails for a Internal Server Error
         return response()->json(
             ['error' => 'User has not been created'],
-            400
+            500
         );
     }
     /**
@@ -94,6 +92,12 @@ class UserController extends Controller
      * @bodyParam password. The password of the user. Example: secret_password
      * @bodyParam password_confirmation. It must match with password
      *
+     * @response 422 {
+     *     "message": "Different Laravel validation messages from lang/en/validation.php", // TODO show the real output message
+     * }
+     * @response 403 {
+     *     "message": "Email or password is incorrect, please try again.",
+     * }
      * @response 200 {
      *     "message": "User token successfully created'",
      *     "token": "User Token"
@@ -102,12 +106,6 @@ class UserController extends Controller
      *         "nickname": "userNickname",
      *         "email": "user@mail.com"
      *     }
-     * }
-     * @response 422 {
-     *     "message": "Different Laravel validation messages from lang/en/validation.php",
-     * }
-     * @response 401 {
-     *     "message": "Unouthorized",
      * }
      */
     public function login(Request $request)
@@ -131,12 +129,13 @@ class UserController extends Controller
                 422
             );
         }
+        // Check if $requestData['email'] and $requestData['password'] matches with database data
         if (!Auth::attempt($requestData)) {
             return response()->json(
                 [
-                    'message' => 'Unauthorized'
+                    'message' => 'Email or password is incorrect, please try again.',
                 ],
-                401
+                403
             );
         }
 
@@ -259,7 +258,7 @@ class UserController extends Controller
         }
         return response()->json(
             ['error' => 'Unauthorized'],
-            401
+            403
         );
     }
 

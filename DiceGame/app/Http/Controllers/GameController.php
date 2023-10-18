@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 class GameController extends Controller
 {
     /**
+     * INDEX()
+     *
      * GET ALL PLAYERS WITH THEIR SUCCESS PERCENTAGES
      *
      * @group Admin
@@ -58,6 +60,8 @@ class GameController extends Controller
         );
     }
     /**
+     * STORE()
+     *
      * CREATE A NEW GAME FOR A SPECIFIC USER.
      *
      * @group User
@@ -82,7 +86,7 @@ class GameController extends Controller
      *     "message": 'Validation failed',
      *     "error": "Different Laravel validation messages from lang/en/validation.php",
      * }
-     * @response 401 {
+     * @response 403 {
      *     "error": "Unauthorized",
      * }
      */
@@ -95,13 +99,21 @@ class GameController extends Controller
                 422
             );
         }
-        $game = new Game();
+        // Check if user which is requesting is the same as the authenticated with token
+        $authUser = Auth::user();
+        if ($authUser->id != $user_id) {
+            return response()->json(
+                ['error' => 'Unauthorized'],
+                403
+            );
+        }
+        $game = new Game(); //TODO: is this correct, need to be a static method or be in this controller
         $game->dice_1 = $game->rollDice();
         $game->dice_2 = $game->rollDice();
         $input = [
             'dice_1' =>  $game->dice_1,
             'dice_2' =>  $game->dice_2,
-            'gameWon' => $game->isGameWon(),
+            'gameWon' => $game->isGameWon(), // TODO Change if change the way to keep in database
             'user_id' => $user_id,
         ];
         $validationRules = [
@@ -121,21 +133,16 @@ class GameController extends Controller
                 422
             );
         }
-        // Check if user is authenticated with token
-        $authUser = Auth::user();
-        if ($authUser->id == $user_id) {
-            $game = Game::create($input);
-            return response()->json(
-                ['message' => 'game created successfully', 'data' => $game],
-                201
-            );
-        }
+        $game = Game::create($input);
+        $userSuccessRate = $user->calculatePlayerSuccessRate() . '%';
         return response()->json(
-            ['error' => 'Unauthorized'],
-            401
+            [
+                'message' => 'game created successfully', 'data' => $game,
+                'User success rate' => $userSuccessRate
+            ],
+            201
         );
     }
-
     /**
      * SHOW ALL GAMES PLAYED BY A SPECIFIC PLAYER.
      *
@@ -173,7 +180,7 @@ class GameController extends Controller
      *     ],
      *     "User success rate": "50.00%"
      * }
-     * @response 401 {
+     * @response 403 {
      *     "error": "Unauthorized",
      * }
      */
@@ -187,33 +194,28 @@ class GameController extends Controller
                 422
             );
         }
-        // Check if user is authenticated with token
+        // Check if user which is requesting is the same as the authenticated with token
         $authUser = Auth::user();
-        if ($authUser->id == $user_id) {
-            // Using eloquent relationship to bring all games played by a specific user
-            $games = $user->games;
-            if ($games->isEmpty()) {
-                return response()->json(
-                    ['message' => 'The player has not played any games yet'],
-                    200
-                );
-            }
-            $succesRate = $user->calculatePlayerSuccessRate();
+        if ($authUser->id != $user_id) {
             return response()->json(
-                ['message' => 'Games found', 'Games' => $games, 'User success rate' => $succesRate . '%'],
+                ['error' => 'Unauthorized'],
+                403
+            );
+        }
+        // Using eloquent relationship to bring all games played by a specific user
+        $games = $user->games;
+        if ($games->isEmpty()) {
+            return response()->json(
+                ['message' => 'The player has not played any games yet'],
                 200
             );
         }
+        $succesRate = $user->calculatePlayerSuccessRate() . '%';
         return response()->json(
-            ['error' => 'Unauthorized'],
-            401
+            ['message' => 'Games found', 'Games' => $games, 'User success rate' => $succesRate],
+            200
         );
     }
-
-
-
-
-
     /**
      * GET PLAYERS RANKING ORDERED BY SUCCESS RATE PERCENTAGES
      *
@@ -269,7 +271,7 @@ class GameController extends Controller
             SORT_ASC,
             $playersPlayedData
         );
-
+        // Merge array with % success rate and other with "The player have not played yet"
         $playersData[] = array_merge($playersPlayedData, $playersNotPlayedData);
 
         // Any games where found
@@ -288,6 +290,8 @@ class GameController extends Controller
         );
     }
     /**
+     * SHOWLOSER()
+     *
      * GET THE PLAYER WITH WORST SUCCESS PERCENTAGES
      *
      * @group Admin
@@ -312,11 +316,13 @@ class GameController extends Controller
                 200
             );
         }
-        //GET a 422 response from getloser().
+        //GET a 422 response from getloser() method.
         // TODO test this output
         return $loser;
     }
     /**
+     * SHOWWINNER()
+     *
      * GET THE PLAYER WITH BEST SUCCESS PERCENTAGES
      *
      * @group Admin
@@ -341,11 +347,13 @@ class GameController extends Controller
                 200
             );
         }
-        //GET a 422 response from getWinner().
+        //GET a 422 response from getWinner() method.
         // TODO test this output
         return $winner;
     }
     /**
+     * DESTROYPLAYERGAMES()
+     *
      * REMOVE GAMES FROM A SPECIFIC PLAYER.
      *
      * @group User
@@ -360,7 +368,7 @@ class GameController extends Controller
      * @response 200 {
      *      "message": "The games of the player have been deleted",
      * }
-     * @response 401 {
+     * @response 403 {
      *     "error": "Unauthorized",
      * }
      */
@@ -374,30 +382,30 @@ class GameController extends Controller
                 422
             );
         }
-        // Check if user is authenticated with token
+        // Check if user which is requesting is the same as the authenticated with token
         $authUser = Auth::user();
-        if ($authUser->id == $user_id) {
-            // Using eloquent relationship to bring all games played by this specific user.
-            $games = $user->games;
-            // Check if players haven't played any games yet or deleted previously.
-            if ($games->isEmpty()) {
-                return response()->json(
-                    ['message' => 'The player has not played any games yet'],
-                    200
-                );
-            }
-            // Delete all games of this specific user one by one
-            foreach ($games as $game) {
-                $game->delete();
-            }
+        if ($authUser->id != $user_id) { // TODO should be !== ?
             return response()->json(
-                ['message' => 'The games of the player have been deleted'],
+                ['error' => 'Unauthorized'],
+                403
+            );
+        }
+        // Using eloquent relationship to bring all games played by this specific user.
+        $games = $user->games;
+        // Check if players haven't played any games yet or deleted previously.
+        if ($games->isEmpty()) {
+            return response()->json(
+                ['message' => 'The player has not played any games yet'],
                 200
             );
         }
+        // Delete all games of this specific user one by one
+        foreach ($games as $game) {
+            $game->delete();
+        }
         return response()->json(
-            ['error' => 'Unauthorized'],
-            401
+            ['message' => 'The games of the player have been deleted'],
+            200
         );
     }
     /**----------------- SERVICES METHODS-----------------*/
@@ -425,7 +433,6 @@ class GameController extends Controller
      */
     public function getLoser(): object
     {
-        // TODO Add permissions
         $users = User::all();
         $loser = $users->first();
         $gamesPlayed = false;
@@ -452,9 +459,8 @@ class GameController extends Controller
      * Gets the user (who has played) with the best success rate
      * @return object User
      */
-    public function getWinner()
+    public function getWinner(): object
     {
-        // TODO Add permissions
         $users = User::all();
         $loser = $users->first();
         $gamesPlayed = false;

@@ -87,7 +87,7 @@ class GameController extends Controller
      *
      * @urlParam user_id. The id of the user who is playing. Example: 1
      *
-     * @response 422 {
+     * @response 404 {
      *     "message": 'User not found',
      * }
      * @response 403 {

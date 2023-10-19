@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Game;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 
 class GameController extends Controller
 {
@@ -15,8 +16,12 @@ class GameController extends Controller
      *
      * @group Admin
      *
+     * @response 403 {
+     *     "error": "Hey hey hey! You cannot do this! Get out of here",
+     * }
      * @response 422 {
      *     "message": "No players have been played yet"
+     * }
      * @response 200 {
      *     "message": "Players and success rates found",
      *      [
@@ -29,12 +34,21 @@ class GameController extends Controller
      *             "nickname": "nickname2",
      *             "successRate": "14.66%"
      *         },
-     *     ]
+     *     ],
+     *     "Average success rate": "14.81%"
      * }
      */
-    public function index()
+    public function index(Request $request)
     {
-        // TODO Add permissions
+        // Check if the user can do this action
+        if (!$request->user()->tokenCan('admin')) {
+            return response()->json(
+                [
+                    'error' => 'Hey hey hey! You cannot do this! Get out of here'
+                ],
+                403
+            );
+        }
         $users = User::all();
         $data = [];
         // if !$users, foreach does not execute
@@ -54,8 +68,13 @@ class GameController extends Controller
                 422
             );
         }
+        $generalSuccessRate = $this->calculateGeneralSuccessRate() . '%';
         return response()->json(
-            ['message' => 'Players and success rates found', 'data' => $data],
+            [
+                'message' => 'Players and success rates found',
+                'data' => $data,
+                'Average success rate' => $generalSuccessRate
+            ],
             200
         );
     }
@@ -65,8 +84,18 @@ class GameController extends Controller
      * CREATE A NEW GAME FOR A SPECIFIC USER.
      *
      * @group User
+     *
      * @urlParam user_id. The id of the user who is playing. Example: 1
      *
+     * @response 422 {
+     *     "message": 'User not found',
+     * }
+     * @response 403 {
+     *     "error": "Hey hey hey! You cannot do this! Get out of here",
+     * }
+     * @response 403 {
+     *     "error": "Unauthorized, this is not your account!",
+     * }
      * @response 201 {
      * "message": "game created successfully",
      *      "data": {
@@ -80,17 +109,14 @@ class GameController extends Controller
      *  }
      * }
      * @response 422 {
-     *     "message": 'User not found',
-     * }
-     * @response 422 {
-     *     "message": 'Validation failed',
-     *     "error": "Different Laravel validation messages from lang/en/validation.php",
-     * }
-     * @response 403 {
-     *     "error": "Unauthorized",
+     *     "message": ""Validation failed",
+     *      "field": [
+     *          "The field must be....."
+     *      ],
+     *    }
      * }
      */
-    public function store(string $user_id)
+    public function store(Request $request, string $user_id)
     {
         $user = User::find($user_id);
         if (!$user) {
@@ -99,11 +125,20 @@ class GameController extends Controller
                 422
             );
         }
+        // Check if the user which is requesting can do this action by its scope
+        if (!$request->user()->tokenCan('player')) {
+            return response()->json(
+                [
+                    'error' => 'Hey hey hey! You cannot do this! Get out of here'
+                ],
+                403
+            );
+        }
         // Check if user which is requesting is the same as the authenticated with token
         $authUser = Auth::user();
         if ($authUser->id != $user_id) {
             return response()->json(
-                ['error' => 'Unauthorized'],
+                ['error' => 'Unauthorized, this is not your account!'],
                 403
             );
         }
@@ -144,17 +179,22 @@ class GameController extends Controller
         );
     }
     /**
+     * SHOWPLAYERGAMES()
+     *
      * SHOW ALL GAMES PLAYED BY A SPECIFIC PLAYER.
      *
-     * @group User
+     * @group Player
      *
      * @urlParam user_id The id of the player. Example: 1
      *
      * @response 422 {
      *     "message": "User not found"
      * }
-     * @response 200 {
-     *     "message": "The player has not played any games yet"
+     * @response 403 {
+     *     "error": "Hey hey hey! You cannot do this! Get out of here",
+     * }
+     * @response 403 {
+     *     "error": "Unauthorized, this is not your account!",
      * }
      * @response 200 {
      *     "message": "Games found",
@@ -180,25 +220,30 @@ class GameController extends Controller
      *     ],
      *     "User success rate": "50.00%"
      * }
-     * @response 403 {
-     *     "error": "Unauthorized",
-     * }
      */
-    public function showPlayerGames(string $user_id)
+    public function showPlayerGames(Request $request, string $user_id)
     {
         $user = User::find($user_id);
-
         if (!$user) {
             return response()->json(
                 ['message' => 'User not found'],
                 422
             );
         }
+        // Check if the user which is requesting can do this action by its scope
+        if (!$request->user()->tokenCan('player')) {
+            return response()->json(
+                [
+                    'error' => 'Hey hey hey! You cannot do this! Get out of here'
+                ],
+                403
+            );
+        }
         // Check if user which is requesting is the same as the authenticated with token
         $authUser = Auth::user();
         if ($authUser->id != $user_id) {
             return response()->json(
-                ['error' => 'Unauthorized'],
+                ['error' => 'Unauthorized, this is not your account!'],
                 403
             );
         }
@@ -217,13 +262,19 @@ class GameController extends Controller
         );
     }
     /**
+     * RANKING()
+     *
      * GET PLAYERS RANKING ORDERED BY SUCCESS RATE PERCENTAGES
      *
      * @group Admin
      *
+     * @response 403 {
+     *     "error": "Hey hey hey! You cannot do this! Get out of here",
+     * }
      * @response 422 {
      *     "message": "No players have been played yet"
-     * @response 200 {
+     * }
+     *  @response 200 {
      *     "message": "Player and success rates found",
      *      [
      *     "User data": [
@@ -240,9 +291,17 @@ class GameController extends Controller
      * }
      */
 
-    public function ranking()
+    public function ranking(Request $request)
     {
-        // TODO Add permissions
+        // Check if the user can do this action
+        if (!$request->user()->tokenCan('admin')) {
+            return response()->json(
+                [
+                    'error' => 'Hey hey hey! You cannot do this! Get out of here'
+                ],
+                403
+            );
+        }
         $users = User::all();
         $playersPlayedData = [];
         $playersNotPlayedData = [];
@@ -284,7 +343,9 @@ class GameController extends Controller
         $generalSuccessRate = $this->calculateGeneralSuccessRate() . '%';
         return response()->json(
             [
-                'message' => 'Players and success rates found', 'Players data' => $playersData, 'Average success rate' => $generalSuccessRate
+                'message' => 'Players and success rates found',
+                'Players data' => $playersData,
+                'Average success rate' => $generalSuccessRate
             ],
             200
         );
@@ -296,14 +357,27 @@ class GameController extends Controller
      *
      * @group Admin
      *
+     * @response 403 {
+     *     "error": "Hey hey hey! You cannot do this! Get out of here",
+     * }
      * @response 422 {
      *     "message": "No players have played yet"
+     * }
      * @response 200 {
      *     "message": "'The worst player is loserNickname with a success rate of 10%",
      * }
      */
-    public function showLoser()
+    public function showLoser(Request $request)
     {
+        // Check if the user which is requesting can do this action by its scope
+        if (!$request->user()->tokenCan('admin')) {
+            return response()->json(
+                [
+                    'error' => 'Hey hey hey! You cannot do this! Get out of here'
+                ],
+                403
+            );
+        }
         $loser = $this->getLoser();
         $gotUser = is_object($loser);
         if ($gotUser) {
@@ -317,6 +391,7 @@ class GameController extends Controller
             );
         }
         //GET a 422 response from getloser() method.
+        // 'message' => 'No players have played yet'
         // TODO test this output
         return $loser;
     }
@@ -327,14 +402,27 @@ class GameController extends Controller
      *
      * @group Admin
      *
+     * @response 403 {
+     *     "error": "Hey hey hey! You cannot do this! Get out of here",
+     * }
      * @response 422 {
      *     "message": "No players have played yet"
+     * }
      * @response 200 {
      *     "message": "'The best player is winnerNickname with a success rate of 10%",
      * }
      */
-    public function showWinner()
+    public function showWinner(Request $request)
     {
+        // Check if the user which is requesting can do this action by its scope
+        if (!$request->user()->tokenCan('admin')) {
+            return response()->json(
+                [
+                    'error' => 'Hey hey hey! You cannot do this! Get out of here'
+                ],
+                403
+            );
+        }
         $winner = $this->getWinner();
         $gotUser = is_object($winner);
         if ($gotUser) {
@@ -348,6 +436,7 @@ class GameController extends Controller
             );
         }
         //GET a 422 response from getWinner() method.
+        // 'message' => 'No players have played yet'
         // TODO test this output
         return $winner;
     }
@@ -357,8 +446,15 @@ class GameController extends Controller
      * REMOVE GAMES FROM A SPECIFIC PLAYER.
      *
      * @group User
+     *
      * @urlParam user_id. The id of the user who is deleting. Example: 1
      *
+     * @response 403 {
+     *     "error": "Hey hey hey! You cannot do this! Get out of here",
+     * }
+     * @response 403 {
+     *     "error": "Unauthorized, this is not your account!",
+     * }
      * @response 422 {
      *     "error": "User not found"
      * }
@@ -368,26 +464,31 @@ class GameController extends Controller
      * @response 200 {
      *      "message": "The games of the player have been deleted",
      * }
-     * @response 403 {
-     *     "error": "Unauthorized",
-     * }
      */
-    public function destroyPlayerGames(string $user_id)
+    public function destroyPlayerGames(Request $request, string $user_id)
     {
-        $user = User::find($user_id);
-
-        if (!$user) {
+        // Check if the user which is requesting can do this action by its scope
+        if (!$request->user()->tokenCan('player')) {
             return response()->json(
-                ['error' => 'User not found'],
-                422
+                [
+                    'error' => 'Hey hey hey! You cannot do this! Get out of here'
+                ],
+                403
             );
         }
         // Check if user which is requesting is the same as the authenticated with token
         $authUser = Auth::user();
-        if ($authUser->id != $user_id) { // TODO should be !== ?
+        if ($authUser->id != $user_id) {
             return response()->json(
-                ['error' => 'Unauthorized'],
+                ['error' => 'Unauthorized, this is not your account!'],
                 403
+            );
+        }
+        $user = User::find($user_id);
+        if (!$user) {
+            return response()->json(
+                ['error' => 'User not found'],
+                422
             );
         }
         // Using eloquent relationship to bring all games played by this specific user.
@@ -408,8 +509,13 @@ class GameController extends Controller
             200
         );
     }
-    /**----------------- SERVICES METHODS-----------------*/
     /**
+     *
+     * ----------------- SERVICES METHODS -----------------
+     *
+     */
+
+     /**
      * Calculate success rate of all players
      * @return float
      */
@@ -449,7 +555,7 @@ class GameController extends Controller
         }
         if (!$gamesPlayed) {
             return response()->json(
-                ['message' => 'No players have played yet'],
+                ['message' => 'No players have played yet'], //TODO This output shouldn't be in this method, is not it's task
                 422
             );
         }
@@ -477,7 +583,7 @@ class GameController extends Controller
         }
         if (!$gamesPlayed) {
             return response()->json(
-                ['message' => 'No players have played yet'],
+                ['message' => 'No players have played yet'], //TODO This output shouldn't be in this method, is not it's task
                 422
             );
         }

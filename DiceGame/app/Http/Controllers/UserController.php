@@ -11,16 +11,12 @@ use Illuminate\Support\Facades\Hash;
 class UserController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-    /**
+     * STORE()
+     *
      * REGISTER AND STORE A NEW USER.
      *
-     * @group Users
+     * @group User
+     *
      * @bodyParam nickname. The nickname of the user. Example: userNickname
      * @bodyParam email. The email of the user. Example: user@mail.com
      * @bodyParam password. The password of the user. Example: secret_password
@@ -36,9 +32,12 @@ class UserController extends Controller
      *     "token": "User Token"
      * }
      * @response 422 {
-     *     "message": "Different Laravel validation messages from lang/en/validation.php",
-     * }
-     * @response 500 {
+     *     "message": ""Validation failed",
+     *      "field": [
+     *          "The field must be....."
+     *      ],
+     *    }
+     * }     * @response 500 {
      *     "message": "User has not been created",
      * }
      */
@@ -66,11 +65,16 @@ class UserController extends Controller
         }
         $requestData['password'] = Hash::make($requestData['password']);
 
-        if ($user = User::create($requestData)) // TODO asign role
-        {
+        if ($user = User::create($requestData)) {
             // If creations works
             /** @var \App\Models\User $user **/
-            $token = $user->createToken('User_Token')->accessToken;
+
+            // Assign 'admin' scope if the user's email is the same as saved in .env
+            $adminEmail = env('ADMIN_EMAIL', 'admin@example.com');
+            $scope = ($user->email === $adminEmail) ? 'admin' : 'player';
+
+            $token = $user->createToken('User_Token', [$scope])->accessToken;
+
             // Show "Anonymous" if nickname is null
             $user->nickname = $user->nickname ?? 'Anonymous';
             return response()->json(
@@ -85,15 +89,21 @@ class UserController extends Controller
         );
     }
     /**
+     * LOGIN()
+     *
      * LOGIN AN EXISTING USER.
      *
-     * @group Users
+     * @group User
      * @bodyParam email. The email of the user. Example: user@mail.com
      * @bodyParam password. The password of the user. Example: secret_password
      * @bodyParam password_confirmation. It must match with password
      *
      * @response 422 {
-     *     "message": "Different Laravel validation messages from lang/en/validation.php", // TODO show the real output message
+     *     "message": ""Validation failed",
+     *      "field": [
+     *          "The field must be....."
+     *      ],
+     *    }
      * }
      * @response 403 {
      *     "message": "Email or password is incorrect, please try again.",
@@ -138,10 +148,14 @@ class UserController extends Controller
                 403
             );
         }
-
         $user = Auth::user();
         /** @var \App\Models\User $user **/
-        $token = $user->createToken('User_Token')->accessToken;
+        // Asigns scope to user
+        // Assign 'admin' scope if the user's email is the same as saved in .env
+        $adminEmail = env('ADMIN_EMAIL', 'admin@example.com');
+        $scope = ($user->email === $adminEmail) ? 'admin' : 'player';
+
+        $token = $user->createToken('User_Token', [$scope])->accessToken;
 
         return response()->json(
             ['message' => 'User token successfully created', 'token' => $token, 'User data' => $user],
@@ -149,12 +163,31 @@ class UserController extends Controller
         );
     }
     /**
+     * UPDATE()
+     *
      * UPDATE A SPECIFIC USER.
      *
-     * @group Users
+     * @group Player
+     *
      * @urlParam id required The ID of the user.
      * @bodyParam nickname. The nickname of the user. Example: userNickname
      *
+     * @response 403 {
+     *     "error": "Hey hey hey! You cannot do this! Get out of here",
+     * }
+     * @response 403 {
+     *     "error": "Unauthorized, this is not your account!",
+     * }
+     * @response 422 {
+     *     "error": "User not found"
+     * }
+     * @response 422 {
+     *     "message": ""Validation failed",
+     *      "field": [
+     *          "The field must be....."
+     *      ],
+     *    }
+     * }
      * @response 200 {
      *     "message": "User successfully updated",
      *     "data": {
@@ -163,14 +196,34 @@ class UserController extends Controller
      *         "email": "user@mail.com"
      *     }
      * }
-     * @response 404 {
-     *     "error": "User not found"
-     * }
-     * @response 422 {
-     *     "message": "Different Laravel validation messages from lang/en/validation.php",
      */
     public function update(Request $request, string $id)
     {
+        // Get user
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(
+                ['message' => 'User not found'],
+                422
+            );
+        }
+        // Check if the user which is requesting can do this action by its scope
+        if (!$request->user()->tokenCan('player')) {
+            return response()->json(
+                [
+                    'error' => 'Hey hey hey! You cannot do this! Get out of here'
+                ],
+                403
+            );
+        }
+        // Check if user which is requesting is the same as the authenticated with token
+        $authUser = Auth::user();
+        if ($authUser->id != $id) {
+            return response()->json(
+                ['error' => 'Unauthorized, this is not your account!'],
+                403
+            );
+        }
         $validationRules = [
             'nickname' => 'nullable|min:4|max:255|unique:users,nickname,'
                 // Uncomment this validations if update this fields is wanted
@@ -195,17 +248,7 @@ class UserController extends Controller
                 422
             );
         }
-
-        // Get user nickname
-        $user = User::find($id);
-
-        if (!$user) {
-            return response()->json(
-                ['error' => 'User not found'],
-                404
-            );
-        }
-
+        // Update user nickname
         $user->nickname = $request->input('nickname');
 
         $user->update();
@@ -220,11 +263,23 @@ class UserController extends Controller
     }
 
     /**
+     * SHOW()
+     *
      * GET A SPECIFIC USER BY ID.
      *
-     * @group Users
+     * @group Player
+     *
      * @urlParam id required The ID of the user.
      *
+     * @response 403 {
+     *     "error": "Hey hey hey! You cannot do this! Get out of here",
+     * }
+     * @response 403 {
+     *     "error": "Unauthorized, this is not your account!",
+     * }
+     * @response 422 {
+     *     "error": "User not found"
+     * }
      * @response 200 {
      *     "data": {
      *         "id": 1,
@@ -232,12 +287,10 @@ class UserController extends Controller
      *         "email": "user@mail.com"
      *     }
      * }
-     * @response 404 {
-     *     "error": "User not found"
-     * }
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
+        //This method is not asked at the project
         $user = User::find($id);
         // If user is not found
         if (!$user) {
@@ -247,42 +300,78 @@ class UserController extends Controller
             );
         }
         // User is found
-        $authUser = Auth::user();
-        if ($authUser->id == $id) {
-            // Asign "Anonymous" if nickname is null
-            $user->nickname = $user->nickname ?? 'Anonymous';
+        // Check if the user which is requesting can do this action by its scope
+        if (!$request->user()->tokenCan('player')) {
             return response()->json(
-                ['message' => 'User found', 'data' => $user],
-                200
+                [
+                    'error' => 'Hey hey hey! You cannot do this! Get out of here'
+                ],
+                403
             );
         }
+        // Check if user which is requesting is the same as the authenticated with token
+        $authUser = Auth::user();
+        if ($authUser->id != $id) {
+            return response()->json(
+                ['error' => 'Unauthorized, this is not your account!'],
+                403
+            );
+        }
+        // Asign "Anonymous" if nickname is null
+        $user->nickname = $user->nickname ?? 'Anonymous';
         return response()->json(
-            ['error' => 'Unauthorized'],
-            403
+            ['message' => 'User found', 'data' => $user],
+            200
         );
     }
-
     /**
+     * DESTROY()
+     *
      * REMOVE A SPECIFIC USER BY ID.
      *
-     * @group Users
+     * @group Player
      * @urlParam id required The ID of the user.
      *
+     * @response 403 {
+     *     "error": "Hey hey hey! You cannot do this! Get out of here",
+     * }
+     * @response 403 {
+     *     "error": "Unauthorized, this is not your account!",
+     * }
+     * @response 422 {
+     *     "error": "User not found"
+     * }
      * @response 200 {
      *     "message": "User successfully deleted",
      *     }
      * }
-     * @response 404 {
-     *     "error": "User not found"
-     * }
-     */    public function destroy(string $id)
+     */
+    public function destroy(Request $request, string $id)
     {
-        //TODO This method is not asked at the project
+        //This method is not asked at the project
+
         $user = User::find($id);
         if (!$user) {
             return response()->json(
                 ['error' => 'User not found'],
                 404
+            );
+        }
+        // Check if the user which is requesting can do this action by its scope
+        if (!$request->user()->tokenCan('player')) {
+            return response()->json(
+                [
+                    'error' => 'Hey hey hey! You cannot do this! Get out of here'
+                ],
+                403
+            );
+        }
+        // Check if user which is requesting is the same as the authenticated with token
+        $authUser = Auth::user();
+        if ($authUser->id != $id) {
+            return response()->json(
+                ['error' => 'Unauthorized, this is not your account!'],
+                403
             );
         }
         $user->delete();
@@ -292,16 +381,30 @@ class UserController extends Controller
         );
     }
     /**
+     * LOGOUT()
+     *
      * LOGOUT AN EXISTING USER.
      *
-     * @group Users
+     * @group User
      *
+     * @response 403 {
+     *     "error": "Hey hey hey! You cannot do this! Get out of here",
+     * }
      * @response 200 {
      *    "message": "User successfully logged out"
      * }
      */
     public function logout(Request $request)
     {
+        // Check if the user which is requesting can do this action by its scope
+        if (!$request->user()->tokenCan('player')) {
+            return response()->json(
+                [
+                    'error' => 'Hey hey hey! You cannot do this! Get out of here'
+                ],
+                403
+            );
+        }
         $request->user()->token()->revoke();
         return response()->json(
             ['message' => 'User successfully logged out'],
